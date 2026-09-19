@@ -2,7 +2,7 @@
 slug: performance-marketing-chatgpt-ads-measurement-2026
 title: "Performance Marketing on ChatGPT in 2026: A Measurement-First Playbook"
 metaTitle: "Performance Marketing on ChatGPT: 2026 Guide"
-description: "Learn how performance marketing on ChatGPT works in 2026, from conversational intent and Sponsored Agents to attribution, testing, and privacy-aware measurement."
+description: "Learn how performance marketing on ChatGPT works in 2026, from conversational intent and Sponsored Agents to attribution, testing, and privacy."
 keywords: ["performance marketing on ChatGPT 2026", "ChatGPT Ads measurement", "conversational advertising", "AI advertising strategy"]
 category: "AI & Automation"
 date: "2026-09-19"
