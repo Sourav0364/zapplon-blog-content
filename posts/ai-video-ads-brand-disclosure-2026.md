@@ -2,7 +2,7 @@
 slug: ai-video-ads-brand-disclosure-2026
 title: "AI Video Ads in 2026: A Practical Brand Disclosure Guide"
 metaTitle: "AI Video Ads: Brand Disclosure Guide for 2026"
-description: "Learn how to create AI video ads with clear disclosure, human review, rights checks, and brand-safety controls that protect audience trust."
+description: "Learn how to create AI video ads with clear disclosure, human review, rights checks, and brand-safety controls that protect audience trust today."
 keywords: ["AI video ads disclosure", "AI video ads for brands", "generative video advertising", "AI video brand safety"]
 category: "AI & Automation"
 date: "2026-09-21"
