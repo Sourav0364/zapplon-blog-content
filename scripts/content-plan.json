@@ -1,0 +1,38 @@
+{
+  "_comment": "The publishing queue. The generator writes the first entry whose slug is not already in posts/, so posts go out in this order. Edit, reorder or delete freely — it is just a list. Add new entries at the end; when the queue empties the generator proposes its own buyer-intent topic in the same style. Do not auto-generate posts that name a competitor: write those by hand so the claims can be checked.",
+  "posts": [
+    { "tier": 1, "slug": "ai-receptionist-for-dental-offices", "title": "AI Receptionist for Dental Offices: Cost, Setup and What to Expect", "keyword": "ai receptionist for dental offices", "linkTo": "/ai-agents" },
+    { "tier": 1, "slug": "ai-receptionist-for-law-firms", "title": "AI Receptionist for Law Firms: What It Can and Cannot Handle", "keyword": "ai receptionist for law firms", "linkTo": "/ai-agents" },
+    { "tier": 1, "slug": "ai-receptionist-for-hvac-plumbing", "title": "AI Receptionist for HVAC and Plumbing Companies", "keyword": "ai receptionist for contractors", "linkTo": "/ai-agents" },
+    { "tier": 1, "slug": "ai-receptionist-for-real-estate-agents", "title": "AI Receptionist for Real Estate Agents: Never Miss a Buyer Call", "keyword": "ai receptionist for real estate", "linkTo": "/ai-agents" },
+    { "tier": 1, "slug": "hipaa-compliant-ai-receptionist", "title": "AI Receptionist for Medical Clinics: HIPAA Questions to Ask First", "keyword": "hipaa compliant ai receptionist", "linkTo": "/ai-agents" },
+    { "tier": 1, "slug": "ai-receptionist-for-salons-med-spas", "title": "AI Receptionist for Salons and Med Spas: Booking Without a Front Desk", "keyword": "ai receptionist for salons", "linkTo": "/ai-agents" },
+    { "tier": 1, "slug": "marketing-agency-cost-california", "title": "What Does a Marketing Agency Cost in California?", "keyword": "marketing agency cost california", "linkTo": "/services" },
+    { "tier": 1, "slug": "google-ads-management-cost-small-business", "title": "Google Ads Management Cost for Small Business: What You Should Pay", "keyword": "google ads management cost", "linkTo": "/services" },
+    { "tier": 1, "slug": "ai-receptionist-vs-hiring-receptionist", "title": "AI Receptionist vs Hiring a Receptionist: The Real Cost Comparison", "keyword": "ai receptionist vs receptionist", "linkTo": "/ai-agents" },
+    { "tier": 1, "slug": "best-ai-receptionist-small-business", "title": "Best AI Receptionist for Small Business: What to Compare Before You Buy", "keyword": "best ai receptionist for small business", "linkTo": "/ai-agents" },
+
+    { "tier": 2, "slug": "in-house-marketing-vs-agency", "title": "In-House Marketing vs Agency: Which Costs Less at Your Size?", "keyword": "in-house marketing vs agency", "linkTo": "/services" },
+    { "tier": 2, "slug": "cold-email-vs-cold-calling", "title": "Cold Email vs Cold Calling for B2B: What Still Works", "keyword": "cold email vs cold calling", "linkTo": "/email-agents" },
+    { "tier": 2, "slug": "is-cold-email-legal-us", "title": "Is Cold Email Legal in the US? CAN-SPAM Rules for Small Business", "keyword": "is cold email legal", "linkTo": "/email-agents" },
+    { "tier": 2, "slug": "shopify-seo-vs-paid-ads", "title": "Shopify SEO vs Paid Ads: Where to Spend First", "keyword": "shopify seo vs paid ads", "linkTo": "/services" },
+    { "tier": 2, "slug": "how-to-choose-ai-voice-agent", "title": "How to Choose an AI Voice Agent: 8 Questions to Ask a Vendor", "keyword": "how to choose ai voice agent", "linkTo": "/ai-agents" },
+    { "tier": 2, "slug": "meta-ads-vs-google-ads-local-services", "title": "Meta Ads vs Google Ads for Local Service Businesses", "keyword": "meta ads vs google ads local", "linkTo": "/services" },
+    { "tier": 2, "slug": "what-does-growth-audit-include", "title": "What Does a Growth Audit Actually Include?", "keyword": "growth audit", "linkTo": "/results" },
+
+    { "tier": 3, "slug": "digital-marketing-agency-los-angeles", "title": "Digital Marketing Agency in Los Angeles: How to Pick One", "keyword": "digital marketing agency los angeles", "linkTo": "/services" },
+    { "tier": 3, "slug": "digital-marketing-agency-san-diego", "title": "Digital Marketing Agency in San Diego: What to Look For", "keyword": "digital marketing agency san diego", "linkTo": "/services" },
+    { "tier": 3, "slug": "local-seo-orange-county", "title": "Local SEO for Orange County Businesses", "keyword": "local seo orange county", "linkTo": "/services" },
+    { "tier": 3, "slug": "google-business-profile-california", "title": "Google Business Profile Setup for California Small Business", "keyword": "google business profile california", "linkTo": "/services" },
+    { "tier": 3, "slug": "lead-generation-california-contractors", "title": "Lead Generation for California Contractors", "keyword": "lead generation california contractors", "linkTo": "/lead-agents" },
+    { "tier": 3, "slug": "dental-marketing-california", "title": "Marketing for Dental Practices in California", "keyword": "dental marketing california", "linkTo": "/services" },
+
+    { "tier": 4, "slug": "cost-of-missed-calls-small-business", "title": "How Many Leads Are You Losing to Missed Calls?", "keyword": "cost of missed calls", "linkTo": "/ai-agents" },
+    { "tier": 4, "slug": "google-ads-clicks-no-calls", "title": "Why Your Google Ads Get Clicks but No Calls", "keyword": "google ads clicks no conversions", "linkTo": "/services" },
+    { "tier": 4, "slug": "instagram-comments-lead-generation", "title": "Your Instagram Comments Are Full of Buyers You Never Contact", "keyword": "instagram lead generation", "linkTo": "/lead-agents" },
+    { "tier": 4, "slug": "cold-email-deliverability-checklist", "title": "Your Cold Emails Are Going to Spam: A Deliverability Checklist", "keyword": "cold email going to spam", "linkTo": "/email-agents" },
+    { "tier": 4, "slug": "small-business-ad-budget-5000", "title": "How to Split a $5,000 Monthly Ad Budget", "keyword": "small business ad budget", "linkTo": "/services" },
+    { "tier": 4, "slug": "first-90-days-marketing-agency", "title": "What to Expect in the First 90 Days With a Marketing Agency", "keyword": "working with a marketing agency", "linkTo": "/approach" },
+    { "tier": 4, "slug": "when-to-change-marketing-agency", "title": "Signs It Is Time to Change Your Marketing Agency", "keyword": "when to change marketing agency", "linkTo": "/results" }
+  ]
+}

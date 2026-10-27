@@ -1,0 +1,127 @@
+name: Publish and submit new blog posts
+
+# Runs automatically whenever the blog automation (Zapia/Zapier) commits a post.
+# 1. Tells zapplon.com to drop its cached post list, so the post is live in
+#    seconds instead of waiting out the 1-hour refresh window.
+# 2. Waits until the post URL actually responds 200.
+# 3. Submits the URL to IndexNow (Bing, Yandex, Naver, Seznam).
+#
+# Google is deliberately NOT submitted here: it does not support IndexNow, and
+# its Indexing API is limited to job postings and livestreams. Google picks new
+# posts up from https://www.zapplon.com/sitemap.xml, which updates on its own.
+
+on:
+  push:
+    branches: [main]
+    paths: ['posts/**.md']
+  workflow_dispatch:
+
+concurrency:
+  group: publish-posts
+  cancel-in-progress: false
+
+env:
+  SITE: https://www.zapplon.com
+  INDEXNOW_KEY: f609a876d1b3fdd7a5e3fa09b8b05a81
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Work out which posts were added
+        id: collect
+        run: |
+          set -euo pipefail
+          if git rev-parse HEAD^ >/dev/null 2>&1; then
+            FILES=$(git diff --name-only --diff-filter=AM HEAD^ HEAD -- 'posts/*.md' || true)
+          else
+            FILES=$(git ls-files 'posts/*.md')
+          fi
+          URLS=""
+          for f in $FILES; do
+            slug=$(basename "$f" .md)
+            URLS="$URLS $SITE/blog/$slug"
+          done
+          URLS=$(echo $URLS | xargs || true)
+          echo "urls=$URLS" >> "$GITHUB_OUTPUT"
+          if [ -z "$URLS" ]; then
+            echo "No post files changed — nothing to do."
+          else
+            echo "Posts to publish:"; for u in $URLS; do echo "  $u"; done
+          fi
+
+      - name: Refresh the site's cached post list
+        if: steps.collect.outputs.urls != ''
+        run: |
+          set -euo pipefail
+          CODE=$(curl -s -o /tmp/reval.json -w '%{http_code}' -X POST \
+            -H "x-revalidate-secret: ${{ secrets.REVALIDATE_SECRET }}" \
+            "$SITE/api/revalidate")
+          echo "revalidate -> HTTP $CODE $(cat /tmp/reval.json)"
+          # A failure here is not fatal: the post still goes live within the
+          # normal 1-hour window, it just takes longer.
+          [ "$CODE" = "200" ] || echo "::warning::Cache refresh failed (HTTP $CODE); falling back to the hourly refresh."
+
+      - name: Wait for the post to be live
+        if: steps.collect.outputs.urls != ''
+        id: live
+        run: |
+          set -euo pipefail
+          READY=""
+          for url in ${{ steps.collect.outputs.urls }}; do
+            ok=""
+            for attempt in $(seq 1 20); do
+              CODE=$(curl -s -o /dev/null -w '%{http_code}' "$url")
+              if [ "$CODE" = "200" ]; then
+                echo "live after ${attempt} attempt(s): $url"; ok=1; break
+              fi
+              sleep 15
+            done
+            if [ -n "$ok" ]; then
+              READY="$READY $url"
+            else
+              echo "::warning::$url did not return 200 in ~5 minutes; skipping submission."
+            fi
+          done
+          READY=$(echo $READY | xargs || true)
+          echo "urls=$READY" >> "$GITHUB_OUTPUT"
+
+      - name: Submit to IndexNow (Bing, Yandex, Naver, Seznam)
+        if: steps.live.outputs.urls != ''
+        run: |
+          set -euo pipefail
+          LIST=$(for u in ${{ steps.live.outputs.urls }}; do printf '"%s",' "$u"; done | sed 's/,$//')
+          cat > /tmp/indexnow.json <<JSON
+          {
+            "host": "www.zapplon.com",
+            "key": "$INDEXNOW_KEY",
+            "keyLocation": "$SITE/$INDEXNOW_KEY.txt",
+            "urlList": [$LIST]
+          }
+          JSON
+          cat /tmp/indexnow.json
+          CODE=$(curl -s -o /tmp/indexnow.out -w '%{http_code}' -X POST \
+            -H 'Content-Type: application/json; charset=utf-8' \
+            --data @/tmp/indexnow.json https://api.indexnow.org/indexnow)
+          echo "IndexNow -> HTTP $CODE"; cat /tmp/indexnow.out || true
+          # 200 = accepted, 202 = accepted, key validation pending.
+          case "$CODE" in
+            200|202) echo "Submitted successfully." ;;
+            *) echo "::error::IndexNow rejected the submission (HTTP $CODE)"; exit 1 ;;
+          esac
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Blog publish run"
+            echo ""
+            echo "- Posts detected: \`${{ steps.collect.outputs.urls }}\`"
+            echo "- Confirmed live: \`${{ steps.live.outputs.urls }}\`"
+            echo ""
+            echo "Google is not submitted here — it reads $SITE/sitemap.xml on its own schedule."
+          } >> "$GITHUB_STEP_SUMMARY"

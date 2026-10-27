@@ -1,0 +1,147 @@
+name: Generate and publish blog posts
+
+# Replaces the Zapier automation. Once a day it writes two researched,
+# buyer-intent posts from scripts/content-plan.json, commits them, makes them
+# live on zapplon.com, and submits them to IndexNow.
+#
+# Why this workflow publishes and submits inline instead of leaving it to
+# publish-and-submit.yml: a push made with GITHUB_TOKEN deliberately does not
+# trigger other workflows, so that one would never fire for these commits.
+# It stays in place for posts pushed from anywhere else.
+#
+# Google is not submitted here — it does not support IndexNow and its Indexing
+# API is limited to job postings and livestreams. Google picks posts up from
+# https://www.zapplon.com/sitemap.xml.
+
+on:
+  schedule:
+    # 03:00 UTC = 08:30 IST. Two posts in this one run.
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      count:
+        description: 'How many posts to write'
+        required: false
+        default: '2'
+
+concurrency:
+  group: generate-posts
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  SITE: https://www.zapplon.com
+  INDEXNOW_KEY: f609a876d1b3fdd7a5e3fa09b8b05a81
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install --quiet 'anthropic>=1.0.0'
+
+      - name: Write the posts
+        id: post
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          POSTS_PER_RUN: ${{ github.event.inputs.count || '2' }}
+          # Override either of these in the repo's Variables to trade cost for
+          # quality: claude-opus-5-5 is stronger and roughly twice the price.
+          BLOG_MODEL: ${{ vars.BLOG_MODEL || 'claude-sonnet-5-5' }}
+          BLOG_EFFORT: ${{ vars.BLOG_EFFORT || 'medium' }}
+        run: python scripts/generate_post.py
+
+      - name: Commit and push
+        id: commit
+        run: |
+          set -euo pipefail
+          SLUGS='${{ steps.post.outputs.slugs }}'
+          if [ -z "$SLUGS" ]; then echo "::error::generator produced no slugs"; exit 1; fi
+          git config user.name  'zapplon-blog-bot'
+          git config user.email 'actions@github.com'
+          URLS=""
+          for SLUG in ${SLUGS//,/ }; do
+            TITLE=$(sed -n 's/^title: "\(.*\)"$/\1/p' "posts/$SLUG.md" | head -1)
+            git add "posts/$SLUG.md"
+            git commit -m "Add blog: ${TITLE:-$SLUG}"
+            URLS="$URLS $SITE/blog/$SLUG"
+          done
+          # Another run may have landed between checkout and now.
+          git pull --rebase --autostash origin main
+          git push origin HEAD:main
+          echo "urls=$(echo $URLS | xargs)" >> "$GITHUB_OUTPUT"
+
+      - name: Make them live now
+        run: |
+          set -euo pipefail
+          CODE=$(curl -s -o /tmp/reval.json -w '%{http_code}' -X POST \
+            -H "x-revalidate-secret: ${{ secrets.REVALIDATE_SECRET }}" \
+            "$SITE/api/revalidate")
+          echo "revalidate -> HTTP $CODE $(cat /tmp/reval.json)"
+          # Non-fatal: without it the posts still appear within the hourly refresh.
+          [ "$CODE" = "200" ] || echo "::warning::cache refresh failed (HTTP $CODE); falling back to the hourly refresh"
+
+      - name: Wait for the posts to be live
+        id: live
+        run: |
+          set -euo pipefail
+          READY=""
+          for url in ${{ steps.commit.outputs.urls }}; do
+            ok=""
+            for attempt in $(seq 1 20); do
+              CODE=$(curl -s -o /dev/null -w '%{http_code}' "$url")
+              if [ "$CODE" = "200" ]; then
+                echo "live after ${attempt} attempt(s): $url"; ok=1; break
+              fi
+              sleep 15
+            done
+            if [ -n "$ok" ]; then
+              READY="$READY $url"
+            else
+              echo "::warning::$url did not return 200 in ~5 minutes; skipping submission"
+            fi
+          done
+          echo "urls=$(echo $READY | xargs)" >> "$GITHUB_OUTPUT"
+
+      - name: Submit to IndexNow (Bing, Yandex, Naver, Seznam)
+        if: steps.live.outputs.urls != ''
+        run: |
+          set -euo pipefail
+          LIST=$(for u in ${{ steps.live.outputs.urls }}; do printf '"%s",' "$u"; done | sed 's/,$//')
+          cat > /tmp/indexnow.json <<JSON
+          {
+            "host": "www.zapplon.com",
+            "key": "$INDEXNOW_KEY",
+            "keyLocation": "$SITE/$INDEXNOW_KEY.txt",
+            "urlList": [$LIST]
+          }
+          JSON
+          cat /tmp/indexnow.json
+          CODE=$(curl -s -o /tmp/indexnow.out -w '%{http_code}' -X POST \
+            -H 'Content-Type: application/json; charset=utf-8' \
+            --data @/tmp/indexnow.json https://api.indexnow.org/indexnow)
+          echo "IndexNow -> HTTP $CODE"; cat /tmp/indexnow.out || true
+          case "$CODE" in
+            200|202) echo "Submitted successfully." ;;
+            *) echo "::error::IndexNow rejected the submission (HTTP $CODE)"; exit 1 ;;
+          esac
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Blog post run"
+            echo ""
+            echo "- Written: \`${{ steps.commit.outputs.urls }}\`"
+            echo "- Confirmed live: \`${{ steps.live.outputs.urls }}\`"
+            echo ""
+            echo "Google is not submitted here — it reads $SITE/sitemap.xml on its own schedule."
+          } >> "$GITHUB_STEP_SUMMARY"
