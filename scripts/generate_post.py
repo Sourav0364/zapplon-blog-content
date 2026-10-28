@@ -14,6 +14,7 @@ same style.
 Env:
   ANTHROPIC_API_KEY  required
   POSTS_PER_RUN      default 2
+  SKIP_IF_DONE_TODAY  "1" = exit without writing if today's quota already exists
   BLOG_MODEL         default claude-sonnet-5-5 (claude-opus-5-5 costs ~2x)
   BLOG_EFFORT        default medium (low | medium | high | xhigh | max)
 
@@ -37,6 +38,9 @@ PLAN_FILE = pathlib.Path("scripts/content-plan.json")
 MODEL = os.environ.get("BLOG_MODEL", "claude-sonnet-5-5")
 EFFORT = os.environ.get("BLOG_EFFORT", "medium")
 POSTS_PER_RUN = int(os.environ.get("POSTS_PER_RUN", "2"))
+# Catch-up mode: do nothing if today already has its full quota. Lets a later
+# cron cover for a scheduled run GitHub delayed or dropped, without doubling up.
+SKIP_IF_DONE = os.environ.get("SKIP_IF_DONE_TODAY") == "1"
 CATEGORY = "AI & Automation"
 SITE = "https://www.zapplon.com"
 MIN_WORDS = 1300
@@ -107,6 +111,17 @@ def existing_posts() -> tuple[set[str], list[str]]:
             ))
     dated.sort(reverse=True)
     return slugs, [t for _, t in dated[:40]]
+
+
+def written_today(today: str) -> int:
+    """How many posts already carry today's date."""
+    count = 0
+    for path in POSTS_DIR.glob("*.md"):
+        head = path.read_text(encoding="utf-8", errors="replace")[:2000]
+        date = re.search(r"^date:\s*(.+)$", head, re.M)
+        if date and date.group(1).strip().strip('"\'') == today:
+            count += 1
+    return count
 
 
 def next_from_plan(slugs: set[str], taken: set[str]) -> dict | None:
@@ -312,12 +327,28 @@ def write_post(meta: dict, body: str, today: str) -> pathlib.Path:
     return path
 
 
+def emit_slugs(written: list[str]) -> None:
+    """Hand the slugs to the workflow so it can publish and submit these URLs."""
+    if out := os.environ.get("GITHUB_OUTPUT"):
+        with open(out, "a", encoding="utf-8") as fh:
+            fh.write(f"slugs={','.join(written)}\n")
+
+
 def main() -> None:
     if not os.environ.get("ANTHROPIC_API_KEY"):
         sys.exit("error: ANTHROPIC_API_KEY is not set")
 
     today = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
     slugs, titles = existing_posts()
+
+    if SKIP_IF_DONE:
+        done = written_today(today)
+        if done >= POSTS_PER_RUN:
+            print(f"{done} post(s) already dated {today}; nothing to do")
+            emit_slugs([])
+            return
+        print(f"catch-up: {done}/{POSTS_PER_RUN} posts exist for {today}")
+
     client = anthropic.Anthropic()
     print(f"{len(slugs)} published; writing {POSTS_PER_RUN} with {MODEL} (effort={EFFORT})")
 
@@ -339,10 +370,7 @@ def main() -> None:
         print(f"    wrote {path} ({len(body.split())} words)")
 
     print(f"\ndone: {len(written)} post(s)")
-    # Hand the slugs to the workflow so it can publish and submit these URLs.
-    if out := os.environ.get("GITHUB_OUTPUT"):
-        with open(out, "a", encoding="utf-8") as fh:
-            fh.write(f"slugs={','.join(written)}\n")
+    emit_slugs(written)
 
 
 if __name__ == "__main__":

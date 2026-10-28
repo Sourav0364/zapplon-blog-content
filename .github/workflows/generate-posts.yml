@@ -15,8 +15,12 @@ name: Generate and publish blog posts
 
 on:
   schedule:
-    # 03:00 UTC = 08:30 IST. Two posts in this one run.
-    - cron: '0 3 * * *'
+    # 02:58 UTC = 08:28 IST. Deliberately not on the hour: GitHub's scheduler is
+    # most contended at :00 and delays or silently drops those runs.
+    - cron: '58 2 * * *'
+    # Safety net at 07:58 UTC = 13:28 IST. Runs in catch-up mode, so it exits
+    # without writing anything if the morning run already did its job.
+    - cron: '58 7 * * *'
   workflow_dispatch:
     inputs:
       count:
@@ -53,6 +57,8 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           POSTS_PER_RUN: ${{ github.event.inputs.count || '2' }}
+          # Only the 07:58 UTC safety-net run skips when the day is already done.
+          SKIP_IF_DONE_TODAY: ${{ github.event.schedule == '58 7 * * *' && '1' || '0' }}
           # Override either of these in the repo's Variables to trade cost for
           # quality: claude-opus-5-5 is stronger and roughly twice the price.
           BLOG_MODEL: ${{ vars.BLOG_MODEL || 'claude-sonnet-5-5' }}
@@ -64,7 +70,11 @@ jobs:
         run: |
           set -euo pipefail
           SLUGS='${{ steps.post.outputs.slugs }}'
-          if [ -z "$SLUGS" ]; then echo "::error::generator produced no slugs"; exit 1; fi
+          if [ -z "$SLUGS" ]; then
+            echo "nothing to publish (catch-up found the day already done)"
+            echo "urls=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           git config user.name  'zapplon-blog-bot'
           git config user.email 'actions@github.com'
           URLS=""
@@ -80,6 +90,7 @@ jobs:
           echo "urls=$(echo $URLS | xargs)" >> "$GITHUB_OUTPUT"
 
       - name: Make them live now
+        if: steps.commit.outputs.urls != ''
         run: |
           set -euo pipefail
           CODE=$(curl -s -o /tmp/reval.json -w '%{http_code}' -X POST \
@@ -91,6 +102,7 @@ jobs:
 
       - name: Wait for the posts to be live
         id: live
+        if: steps.commit.outputs.urls != ''
         run: |
           set -euo pipefail
           READY=""
